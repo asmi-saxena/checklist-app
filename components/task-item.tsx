@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
+import { X } from 'lucide-react'
 
 interface TaskItemProps {
   id: string
@@ -21,16 +21,16 @@ export function TaskItem({
   onDelete,
 }: TaskItemProps) {
   return (
-    <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg hover:shadow-md transition-shadow group">
+    <div className="group flex items-start gap-4 p-4 bg-card rounded-xl border border-border transition-all duration-300 hover:shadow-lg hover:border-primary/20">
       <input
         type="checkbox"
         checked={completed}
         onChange={() => onToggle(id)}
-        className="w-5 h-5 rounded cursor-pointer accent-primary flex-shrink-0"
+        className="mt-1 w-6 h-6 rounded-full cursor-pointer accent-primary flex-shrink-0 transition-transform"
       />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 pt-0.5">
         <p
-          className={`text-sm font-medium break-words ${
+          className={`text-base font-medium leading-relaxed break-words transition-all ${
             completed
               ? 'text-muted-foreground line-through'
               : 'text-foreground'
@@ -40,7 +40,7 @@ export function TaskItem({
         </p>
       </div>
       {daysRemaining !== undefined && (
-        <div className="flex-shrink-0 px-3 py-1 bg-secondary rounded-full">
+        <div className="flex-shrink-0 px-3 py-1.5 bg-secondary/60 rounded-full">
           <span className="text-xs font-semibold text-secondary-foreground">
             T-{daysRemaining}
           </span>
@@ -48,10 +48,10 @@ export function TaskItem({
       )}
       <button
         onClick={() => onDelete(id)}
-        className="p-2 text-muted-foreground hover:text-destructive rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+        className="mt-1 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
         aria-label="Delete task"
       >
-        <Trash2 size={16} />
+        <X size={18} />
       </button>
     </div>
   )

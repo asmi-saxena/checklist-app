@@ -93,29 +93,39 @@ export default function ChecklistPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background py-6 px-4 sm:py-10">
-      <div className="max-w-md mx-auto">
+    <main className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/10 py-8 px-4 sm:py-16">
+      <div className="max-w-lg mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 text-balance">
+        <div className="mb-12">
+          <div className="inline-block mb-4 px-4 py-2 bg-secondary/30 rounded-full">
+            <span className="text-xs font-semibold tracking-wide text-secondary-foreground uppercase">
+              Shared List
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-light text-foreground mb-3 text-balance tracking-tight">
             Our Checklist
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Things to do together
+          <p className="text-base text-muted-foreground font-light">
+            Things we want to do together
           </p>
         </div>
 
         {/* Add Task Form */}
-        <div className="mb-8">
+        <div className="mb-10">
           <AddTaskForm onAddTask={handleAddTask} />
         </div>
 
         {/* Tasks List */}
         <div className="space-y-3">
           {sortedActiveTasks.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-2">No tasks yet!</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="text-center py-16">
+              <div className="inline-block mb-4 p-4 bg-secondary/20 rounded-full">
+                <svg className="w-8 h-8 text-secondary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m0 0h6m0 0h-6m0-6h-6m0 6h6" />
+                </svg>
+              </div>
+              <p className="text-foreground font-light text-lg mb-2">No tasks yet</p>
+              <p className="text-muted-foreground text-sm font-light">
                 Add something to get started
               </p>
             </div>
@@ -138,13 +148,17 @@ export default function ChecklistPage() {
 
         {/* Completed Tasks Section */}
         {completedTasks.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-border">
+          <div className="mt-12 pt-8 border-t border-border">
             <details className="group cursor-pointer">
-              <summary className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                <span className="text-lg">▶</span>
+              <summary className="flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors select-none">
+                <span className="inline-flex items-center justify-center w-5 h-5 group-open:rotate-90 transition-transform">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
                 Completed ({completedTasks.length})
               </summary>
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 space-y-3">
                 {completedTasks.map((task) => (
                   <TaskItem
                     key={task.id}
