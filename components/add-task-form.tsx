@@ -34,7 +34,7 @@ export function AddTaskForm({ onAddTask }: AddTaskFormProps) {
           onChange={(e) => setTitle(e.target.value)}
           onFocus={() => setIsExpanded(true)}
           placeholder="What would you like to do?"
-          className="w-full px-5 py-4 bg-card border border-border rounded-xl text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+          className="w-full px-5 py-4 bg-white border-2 border-border rounded-2xl text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all shadow-sm"
         />
         
         {isExpanded && (
@@ -45,13 +45,13 @@ export function AddTaskForm({ onAddTask }: AddTaskFormProps) {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-border rounded-2xl text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all shadow-sm"
               />
             </div>
             <button
               type="submit"
               disabled={!title.trim()}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <Plus size={20} />
               <span>Add</span>

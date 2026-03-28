@@ -21,7 +21,7 @@ export function TaskItem({
   onDelete,
 }: TaskItemProps) {
   return (
-    <div className="group flex items-start gap-4 p-4 bg-card rounded-xl border border-border transition-all duration-300 hover:shadow-lg hover:border-primary/20">
+    <div className="group flex items-start gap-4 p-5 bg-white rounded-2xl border-2 border-border shadow-sm transition-all duration-300 hover:shadow-md hover:border-accent/30">
       <input
         type="checkbox"
         checked={completed}
@@ -40,8 +40,8 @@ export function TaskItem({
         </p>
       </div>
       {daysRemaining !== undefined && (
-        <div className="flex-shrink-0 px-3 py-1.5 bg-secondary/60 rounded-full">
-          <span className="text-xs font-semibold text-secondary-foreground">
+        <div className="flex-shrink-0 px-3 py-1.5 bg-accent rounded-full shadow-sm">
+          <span className="text-xs font-bold text-accent-foreground">
             T-{daysRemaining}
           </span>
         </div>
