@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AddTaskForm } from '@/components/add-task-form'
 import { TaskItem } from '@/components/task-item'
 import { DecorativeStickers } from '@/components/decorative-stickers'
@@ -12,7 +12,7 @@ interface Task {
   date?: string
 }
 
-const STORAGE_KEY = 'checklist-tasks'
+const SHARED_LIST_ID = 'asmi-deep-shared'
 
 function calculateDaysRemaining(dateString: string): number {
   const today = new Date()
@@ -62,71 +62,25 @@ function mergeTaskLists(a: Task[], b: Task[]): Task[] {
 export default function ChecklistPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [listId, setListId] = useState<string | null>(null)
   const [isFormExpanded, setIsFormExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-
-  // Load tasks from Supabase (with listId) or localStorage on mount
   useEffect(() => {
-    async function init() {
-      if (typeof window === 'undefined') return
-
-      const params = new URLSearchParams(window.location.search)
-      const paramListId = params.get('listId')
-      setListId(paramListId)
-
-      if (paramListId) {
-        try {
-          const response = await fetch(`/api/tasks?listId=${encodeURIComponent(paramListId)}`)
-          const data = await response.json()
-          if (response.ok) {
-            setTasks(data.tasks || [])
-          } else {
-            setError(data.error || 'Failed to load shared list')
-          }
-        } catch (err) {
-          setError('Network error while loading shared list')
-        }
-      } else {
-        const stored = window.localStorage.getItem(STORAGE_KEY)
-        if (stored) {
-          try {
-            setTasks(JSON.parse(stored))
-          } catch (e) {
-            console.error('Failed to load tasks:', e)
-            setTasks([])
-          }
-        }
-      }
-
-      setIsLoading(false)
-    }
-
-    init()
+    fetch(`/api/tasks?listId=${SHARED_LIST_ID}`)
+      .then((r) => r.json())
+      .then((data) => setTasks(data.tasks || []))
+      .catch(() => setError('Failed to load tasks'))
+      .finally(() => setIsLoading(false))
   }, [])
 
-  // Save tasks to localStorage and optionally to Supabase when listId is set
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
-    }
-
-    if (!isLoading && listId) {
-      ;(async () => {
-        try {
-          await fetch('/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ listId, tasks }),
-          })
-        } catch (err) {
-          console.error('Failed to sync to backend', err)
-          setError('Could not sync to shared list (network issue).')
-        }
-      })()
-    }
-  }, [tasks, listId, isLoading])
+    if (isLoading) return
+    fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listId: SHARED_LIST_ID, tasks }),
+    }).catch(() => setError('Could not sync tasks.'))
+  }, [tasks, isLoading])
 
   const handleAddTask = (newTask: { title: string; date?: string }) => {
     const task: Task = {
