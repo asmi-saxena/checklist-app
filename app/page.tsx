@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AddTaskForm } from '@/components/add-task-form'
 import { TaskItem } from '@/components/task-item'
 import { DecorativeStickers } from '@/components/decorative-stickers'
@@ -27,29 +27,106 @@ function calculateDaysRemaining(dateString: string): number {
   return diffDays
 }
 
+function encodeTasks(tasks: Task[]): string {
+  try {
+    return encodeURIComponent(btoa(JSON.stringify(tasks)))
+  } catch {
+    return ''
+  }
+}
+
+function decodeTasks(value: string): Task[] {
+  try {
+    const decoded = atob(decodeURIComponent(value))
+    const parsed = JSON.parse(decoded)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((item) => item && typeof item === 'object' && 'id' in item)
+      .map((item) => ({
+        id: String((item as any).id),
+        title: String((item as any).title ?? ''),
+        completed: Boolean((item as any).completed),
+        date: (item as any).date ? String((item as any).date) : undefined,
+      }))
+  } catch {
+    return []
+  }
+}
+
+function mergeTaskLists(a: Task[], b: Task[]): Task[] {
+  const map = new Map<string, Task>()
+  ;[...a, ...b].forEach((task) => map.set(task.id, task))
+  return Array.from(map.values())
+}
+
 export default function ChecklistPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [listId, setListId] = useState<string | null>(null)
+  const [isFormExpanded, setIsFormExpanded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Load tasks from localStorage on mount
+
+  // Load tasks from Supabase (with listId) or localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        setTasks(JSON.parse(stored))
-      } catch (e) {
-        console.error('Failed to load tasks:', e)
+    async function init() {
+      if (typeof window === 'undefined') return
+
+      const params = new URLSearchParams(window.location.search)
+      const paramListId = params.get('listId')
+      setListId(paramListId)
+
+      if (paramListId) {
+        try {
+          const response = await fetch(`/api/tasks?listId=${encodeURIComponent(paramListId)}`)
+          const data = await response.json()
+          if (response.ok) {
+            setTasks(data.tasks || [])
+          } else {
+            setError(data.error || 'Failed to load shared list')
+          }
+        } catch (err) {
+          setError('Network error while loading shared list')
+        }
+      } else {
+        const stored = window.localStorage.getItem(STORAGE_KEY)
+        if (stored) {
+          try {
+            setTasks(JSON.parse(stored))
+          } catch (e) {
+            console.error('Failed to load tasks:', e)
+            setTasks([])
+          }
+        }
       }
+
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    init()
   }, [])
 
-  // Save tasks to localStorage whenever they change
+  // Save tasks to localStorage and optionally to Supabase when listId is set
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
     }
-  }, [tasks, isLoading])
+
+    if (!isLoading && listId) {
+      ;(async () => {
+        try {
+          await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ listId, tasks }),
+          })
+        } catch (err) {
+          console.error('Failed to sync to backend', err)
+          setError('Could not sync to shared list (network issue).')
+        }
+      })()
+    }
+  }, [tasks, listId, isLoading])
 
   const handleAddTask = (newTask: { title: string; date?: string }) => {
     const task: Task = {
@@ -59,6 +136,7 @@ export default function ChecklistPage() {
       date: newTask.date,
     }
     setTasks([...tasks, task])
+    setIsFormExpanded(false)
   }
 
   const handleToggleTask = (id: string) => {
@@ -87,100 +165,98 @@ export default function ChecklistPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-[#fdf4e8] flex items-center justify-center">
+        <div className="animate-pulse text-[#c06587] font-semibold">Loading...</div>
       </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-background overflow-x-hidden relative">
+    <main className="min-h-screen relative overflow-x-hidden bg-[#fdf4e8] text-[#2d4f3d]">
+      <div className="absolute inset-0 bg-[#fdf4e8]" />
+      <div className="absolute inset-x-0 top-0 h-56 bg-[#62b864]">
+        <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-full">
+          <path d="M0,120 C150,0 350,0 500,120 C650,240 850,240 1000,120 C1150,0 1200,0 1200,120 L1200,0 L0,0 Z" fill="#62b864" />
+        </svg>
+      </div>
+
       <DecorativeStickers />
-      
-      <div className="max-w-6xl mx-auto py-6 px-4 sm:py-8 lg:py-12 lg:px-8 relative z-10">
-        {/* Header with scalloped top */}
-        <div className="mb-8 lg:mb-12 relative">
-          {/* Scalloped pink header background */}
-          <div className="absolute -left-8 -right-8 top-0 -translate-y-6 h-40 lg:h-48 bg-primary rounded-b-3xl lg:rounded-b-4xl shadow-md">
-            <svg className="absolute -bottom-1 left-0 w-full h-8 lg:h-10 text-background" viewBox="0 0 400 30" preserveAspectRatio="none">
-              <path d="M 0 0 L 400 0 L 400 15 Q 390 25 380 15 Q 370 25 360 15 Q 350 25 340 15 Q 330 25 320 15 Q 310 25 300 15 Q 290 25 280 15 Q 270 25 260 15 Q 250 25 240 15 Q 230 25 220 15 Q 210 25 200 15 Q 190 25 180 15 Q 170 25 160 15 Q 150 25 140 15 Q 130 25 120 15 Q 110 25 100 15 Q 90 25 80 15 Q 70 25 60 15 Q 50 25 40 15 Q 30 25 20 15 Q 10 25 0 15 Z" fill="currentColor" />
-            </svg>
-          </div>
-          
-          <div className="relative pt-16 lg:pt-20 text-center lg:text-left">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-3 lg:mb-4 text-balance">
-              Our Checklist
-            </h1>
-            <p className="text-lg lg:text-xl text-white/90 font-light italic">
-              things we want to do together
-            </p>
-          </div>
+
+      <div className="absolute left-4 top-4 z-20 rounded-2xl border border-[#f7d8e9] bg-white/90 p-3 shadow-lg backdrop-blur-sm animate-float-slow">
+        <p className="text-xs font-black tracking-wider text-[#e7448b]">Asmi&Deep todo</p>
+        
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-12 pt-24 lg:px-8">
+        <div className="text-center mb-12 animate-bounce-slow">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white drop-shadow-lg">check<span className="text-[#ff9ac2] italic">list</span></h1>
+          <p className="mt-2 text-base text-white/80 font-semibold"> things we need to be together </p>
         </div>
 
-        {/* Main content grid */}
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Left sidebar - Form (sticky on desktop) */}
-          <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-8">
-              {/* Add Task Form */}
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">Add New</h2>
-                <AddTaskForm onAddTask={handleAddTask} />
-              </div>
-            </div>
-          </div>
-
-          {/* Right content - Tasks */}
-          <div className="lg:col-span-2">
-            {/* Tasks List */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold text-foreground mb-4">To Do</h2>
-              <div className="space-y-3">
-                {sortedActiveTasks.length === 0 ? (
-                  <div className="text-center py-16 bg-white rounded-3xl border-2 border-border">
-                    <div className="inline-block mb-4 p-4 bg-accent/20 rounded-full">
-                      <svg className="w-10 h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m0 0h6m0 0h-6m0-6h-6m0 6h6" />
-                      </svg>
-                    </div>
-                    <p className="text-foreground font-semibold text-lg mb-2">No tasks yet</p>
-                    <p className="text-muted-foreground text-sm font-light">
-                      Add something fun to get started
-                    </p>
-                  </div>
+        <div className="mx-auto rounded-[2rem] border-4 border-[#fde0d7] bg-white/95 p-5 shadow-[0_15px_30px_rgba(31,56,49,0.15)] sm:p-8">
+          <div className={`grid gap-6 lg:gap-8 ${isFormExpanded ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+            <div className={isFormExpanded ? 'lg:col-span-2' : 'lg:col-span-1'}>
+              <div>
+                {!isFormExpanded ? (
+                  <button
+                    onClick={() => setIsFormExpanded(true)}
+                    className="w-full rounded-3xl border-2 border-[#f8d4db] bg-[#f8d4db] p-4 text-center font-bold text-[#c32772] hover:bg-[#f5b3c8] transition-all animate-scale-in"
+                  >
+                    + Add Task
+                  </button>
                 ) : (
-                  sortedActiveTasks.map((task) => (
-                    <TaskItem
-                      key={task.id}
-                      id={task.id}
-                      title={task.title}
-                      completed={task.completed}
-                      daysRemaining={
-                        task.date ? calculateDaysRemaining(task.date) : undefined
-                      }
-                      onToggle={handleToggleTask}
-                      onDelete={handleDeleteTask}
-                    />
-                  ))
+                  <div className="rounded-3xl border-2 border-[#f8d4db] bg-white p-6 shadow-sm hover:shadow-md transition-shadow animate-scale-in">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-bold text-[#c32772]">Add New</h2>
+                      <button
+                        onClick={() => setIsFormExpanded(false)}
+                        className="text-[#c32772] text-xl font-bold hover:text-[#a01850]"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <AddTaskForm onAddTask={handleAddTask} />
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Completed Tasks Section */}
-            {completedTasks.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold text-foreground mb-4">Completed</h2>
-                <div className="rounded-3xl bg-white border-2 border-border overflow-hidden">
-                  <details className="group cursor-pointer">
-                    <summary className="flex items-center gap-3 text-base font-semibold text-foreground hover:bg-muted transition-colors select-none p-6">
-                      <span className="inline-flex items-center justify-center w-5 h-5 group-open:rotate-90 transition-transform">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </span>
-                      Done ({completedTasks.length})
+            <div className={`space-y-6 animate-slide-in ${isFormExpanded ? 'lg:col-span-2' : 'lg:col-span-2'}`}>
+              <div className="rounded-3xl border-2 border-[#f0eae5] bg-white p-5 shadow-sm hover:shadow-lg transition-all duration-300">
+                <h2 className="text-lg font-bold text-[#c32772] mb-4 flex items-center gap-2">
+                  <span className="inline-block animate-spin-slow">✓</span>
+                  To Do
+                </h2>
+                <div className="space-y-3">
+                  {sortedActiveTasks.length === 0 ? (
+                    <div className="rounded-2xl border-2 border-dashed border-[#fbbcd8] bg-[#fff1f8] p-10 text-center">
+                      <p className="text-lg font-semibold text-[#c3508c]">No tasks yet</p>
+                      <p className="text-sm text-[#7f3f66]">Add something playful and share the link to collaborate.</p>
+                    </div>
+                  ) : (
+                    sortedActiveTasks.map((task) => (
+                      <TaskItem
+                        key={task.id}
+                        id={task.id}
+                        title={task.title}
+                        completed={task.completed}
+                        daysRemaining={task.date ? calculateDaysRemaining(task.date) : undefined}
+                        onToggle={handleToggleTask}
+                        onDelete={handleDeleteTask}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {completedTasks.length > 0 && (
+                <div className="rounded-3xl border-2 border-[#f0eae5] bg-white p-5 shadow-sm hover:shadow-lg transition-all duration-300">
+                  <details className="group">
+                    <summary className="cursor-pointer rounded-xl bg-[#ffe5f0] px-4 py-2 font-semibold text-[#7d1e61] hover:bg-[#ffd2e7] transition-colors flex items-center justify-between group-open:bg-[#ffd2e7]">
+                      <span>Completed ({completedTasks.length})</span>
+                      <span className="inline-block transition-transform group-open:rotate-180">▼</span>
                     </summary>
-                    <div className="border-t border-border p-6 space-y-3">
+                    <div className="mt-3 space-y-2">
                       {completedTasks.map((task) => (
                         <TaskItem
                           key={task.id}
@@ -194,11 +270,12 @@ export default function ChecklistPage() {
                     </div>
                   </details>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
     </main>
   )
 }
+
