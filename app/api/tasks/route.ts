@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from(TABLE)
     .select('id, title, completed, date')
-    .eq('listId', listId)
+    .eq('listid', listId)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   const payload = tasks.map((task: any) => ({
     id: String(task.id),
-    listId: String(listId),
+    listid: String(listId),
     title: String(task.title),
     completed: Boolean(task.completed),
     date: task.date ? String(task.date) : null,
@@ -52,7 +52,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Missing listId' }, { status: 400 })
   }
 
-  const { error } = await supabase.from(TABLE).delete().eq('listId', listId)
+  const { error } = await supabase.from(TABLE).delete().eq('listid', listId)
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
